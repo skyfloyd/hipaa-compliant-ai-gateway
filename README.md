@@ -27,7 +27,7 @@ A FastAPI-based service that ensures HIPAA compliance when processing healthcare
 - **Session-Based Token Management**: Thread-safe session storage with automatic expiration (24 hours)
 - **Secure Processing**: Removes sensitive data before LLM processing using UUID-based tokens
 - **Data Reinsertion**: Automatically reinserts PII/PHI into LLM responses using session tokens
-- **OpenAI-Compatible**: Works with OpenAI API or any OpenAI-compatible endpoint
+- **Google Gemini Integration**: Uses Google's free Gemini Pro model for text generation
 - **Docker Support**: Easy deployment with Docker and Docker Compose
 - **Diagnostic Endpoint**: Test PII/PHI detection without processing through LLM
 
@@ -60,9 +60,7 @@ Final Response (with original PII/PHI)
 
 2. **Set environment variables (optional):**
    ```bash
-   export OPENAI_API_KEY=your-api-key-here
-   export OPENAI_API_BASE=https://api.openai.com/v1  # Optional
-   export DEFAULT_LLM_MODEL=gpt-3.5-turbo  # Optional
+   export GEMINI_API_KEY=your-gemini-api-key-here  # Optional, defaults to provided key
    ```
 
 3. **Start the service:**
@@ -114,7 +112,6 @@ curl -X POST "http://localhost:8000/chat" \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Patient John Doe, SSN 123-45-6789, phone 555-123-4567, needs a follow-up appointment.",
-    "model": "gpt-3.5-turbo",
     "session_id": "optional-session-id"
   }'
 ```
@@ -155,7 +152,6 @@ response = requests.post(
     "http://localhost:8000/chat",
     json={
         "prompt": "My patient with email john@example.com and MRN 12345 needs medication review.",
-        "model": "gpt-3.5-turbo",
         "session_id": session_id
     }
 )
@@ -181,7 +177,7 @@ curl -X POST "http://localhost:8000/detect-pii" \
 
 ## Mock Mode
 
-If no `OPENAI_API_KEY` is provided, the service will operate in mock mode, returning simulated responses. This is useful for testing and demonstration purposes.
+If no `GEMINI_API_KEY` is provided, the service will operate in mock mode, returning simulated responses. This is useful for testing and demonstration purposes. The default configuration includes a Gemini API key, so the service will use the real Gemini API by default.
 
 ## Security Considerations
 
@@ -214,9 +210,7 @@ hipaa-compliant-ai-gateway/
 
 ## Environment Variables
 
-- `OPENAI_API_KEY`: Your OpenAI API key (optional for mock mode)
-- `OPENAI_API_BASE`: Base URL for OpenAI API (default: https://api.openai.com/v1)
-- `DEFAULT_LLM_MODEL`: Default model to use (default: gpt-3.5-turbo)
+- `GEMINI_API_KEY`: Your Google Gemini API key (optional, defaults to provided key)
 
 ## Author
 

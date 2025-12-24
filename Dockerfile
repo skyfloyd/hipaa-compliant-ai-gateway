@@ -12,8 +12,13 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Download spaCy English model required by Presidio
-RUN python -m spacy download en_core_web_sm
+# Install spaCy English model required by Presidio
+# Using pip install instead of spacy download for better Docker compatibility
+# Using medium model (md) for better accuracy while keeping reasonable size (~91 MB)
+RUN pip install --no-cache-dir https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.7.1/en_core_web_md-3.7.1-py3-none-any.whl
+
+# Set environment variable for Presidio to use the medium model
+ENV PRESIDIO_SPACY_MODEL=en_core_web_md
 
 # Copy application code
 COPY . .

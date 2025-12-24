@@ -27,7 +27,6 @@ llm_service = LLMService()
 class PromptRequest(BaseModel):
     prompt: str
     session_id: Optional[str] = None
-    model: Optional[str] = "gpt-3.5-turbo"
 
 
 class PromptResponse(BaseModel):
@@ -85,6 +84,10 @@ async def chat(request: PromptRequest):
     4. Returning the final response
     
     Uses session-based token management for PHI reinsertion.
+    
+    Request body should be JSON with:
+    - prompt: str (required)
+    - session_id: str (optional)
     """
     try:
         # Generate or use provided session_id
@@ -98,8 +101,7 @@ async def chat(request: PromptRequest):
         
         # Step 2: Send to LLM
         llm_response = await llm_service.get_completion(
-            deidentified_prompt, 
-            model=request.model
+            deidentified_prompt
         )
         
         # Step 3: Reinsert PII/PHI using session_id
@@ -115,6 +117,8 @@ async def chat(request: PromptRequest):
             session_id=session_id
         )
     
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid request format: {str(e)}. Make sure to send JSON with Content-Type: application/json header.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
 

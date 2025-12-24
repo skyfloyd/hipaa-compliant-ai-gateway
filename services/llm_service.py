@@ -1,29 +1,34 @@
 """
 LLM Service
-Handles communication with Large Language Models
+Handles communication with Google Gemini API using official library
 """
 
 import os
-import httpx
+import asyncio
 from typing import Optional
+import google.generativeai as genai
 
 
 class LLMService:
     """
-    Service for interacting with LLM APIs.
-    Supports OpenAI-compatible APIs.
+    Service for interacting with Google Gemini API.
+    Uses the official google-generativeai library.
     """
     
     def __init__(self):
-        self.api_key = os.getenv("OPENAI_API_KEY", "")
-        self.api_base = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
-        self.default_model = os.getenv("DEFAULT_LLM_MODEL", "gpt-3.5-turbo")
+        self.api_key = os.getenv("GEMINI_API_KEY", "")
         
         if not self.api_key:
             # For demo purposes, use a mock response if no API key is set
             self.use_mock = True
+            self.model = None
         else:
             self.use_mock = False
+            # Configure the Gemini API
+            genai.configure(api_key=self.api_key)
+            # Use gemini-2.5-flash (free tier, fast, current model)
+            # Alternative: gemini-2.5-pro for better quality
+            self.model = genai.GenerativeModel('gemini-2.5-flash')
     
     async def get_completion(
         self, 
@@ -31,46 +36,40 @@ class LLMService:
         model: Optional[str] = None
     ) -> str:
         """
-        Get completion from LLM.
+        Get completion from Google Gemini.
         
         Args:
             prompt: The sanitized prompt (without PII/PHI)
-            model: Model name (optional)
+            model: Model name (ignored - using gemini-2.5-flash)
             
         Returns:
             LLM response text
         """
-        model = model or self.default_model
-        
         if self.use_mock:
             # Mock response for demo purposes
             return self._get_mock_response(prompt)
         
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    f"{self.api_base}/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {self.api_key}",
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "model": model,
-                        "messages": [
-                            {
-                                "role": "user",
-                                "content": prompt
-                            }
-                        ],
-                        "temperature": 0.7,
-                        "max_tokens": 1000
-                    }
+            # Run the synchronous Gemini API call in an executor to avoid blocking
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: self.model.generate_content(
+                    prompt,
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=0.7,
+                        max_output_tokens=1000,
+                    )
                 )
-                response.raise_for_status()
-                data = response.json()
-                return data["choices"][0]["message"]["content"]
+            )
+            
+            # Extract text from response
+            if response.text:
+                return response.text
+            else:
+                raise ValueError("Empty response from Gemini API")
         
-        except httpx.HTTPError as e:
+        except Exception as e:
             # Fallback to mock if API call fails
             print(f"LLM API error: {e}. Using mock response.")
             return self._get_mock_response(prompt)
@@ -84,4 +83,3 @@ class LLMService:
         return f"I understand your request. You mentioned some placeholders like [SSN_0] or [PHONE_0]. " \
                f"Based on your query, I can help you with healthcare-related information. " \
                f"Please note that I'm processing this in a HIPAA-compliant manner."
-

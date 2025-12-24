@@ -7,6 +7,7 @@ import uuid
 import re
 from typing import Dict, List, Optional
 from presidio_analyzer import AnalyzerEngine, PatternRecognizer, Pattern
+from presidio_analyzer.nlp_engine import NlpEngineProvider
 from services.session_store import SessionStore
 
 # Global session store instance
@@ -17,11 +18,51 @@ class PIIService:
     """Uses Presidio for PHI detection and de-identification"""
     
     def __init__(self):
-        self.analyzer = AnalyzerEngine()
+        # Configure Presidio to use the medium spaCy model we installed
+        # Using en_core_web_md for better accuracy with word vectors (~91 MB)
+        # Create NLP engine provider with explicit model configuration
+        nlp_configuration = {
+            "nlp_engine_name": "spacy",
+            "models": [{"lang_code": "en", "model_name": "en_core_web_md"}]
+        }
+        
+        nlp_engine_provider = NlpEngineProvider(nlp_configuration=nlp_configuration)
+        nlp_engine = nlp_engine_provider.create_engine()
+        
+        # Initialize analyzer with the configured NLP engine
+        self.analyzer = AnalyzerEngine(nlp_engine=nlp_engine)
         self._add_custom_recognizers()
     
     def _add_custom_recognizers(self):
         """Add custom recognizers for medical entities"""
+        
+        # Enhanced SSN recognizer - Presidio's default might miss some patterns
+        ssn_patterns = [
+            Pattern(
+                name="ssn_pattern_1",
+                regex=r"\b(?:SSN|Social Security Number|social security)[\s:]*(\d{3}-\d{2}-\d{4})\b",
+                score=0.9
+            ),
+            Pattern(
+                name="ssn_pattern_2",
+                regex=r"\b\d{3}-\d{2}-\d{4}\b",  # Format: 123-45-6789
+                score=0.85
+            ),
+            Pattern(
+                name="ssn_pattern_3",
+                regex=r"\b\d{3}\s\d{2}\s\d{4}\b",  # Format: 123 45 6789
+                score=0.85
+            ),
+            Pattern(
+                name="ssn_pattern_4",
+                regex=r"\b\d{9}\b",  # Format: 123456789 (9 consecutive digits)
+                score=0.7
+            ),
+        ]
+        ssn_recognizer = PatternRecognizer(
+            supported_entity="US_SSN",
+            patterns=ssn_patterns
+        )
         
         # Medical Record Number (MRN) recognizer - improved patterns
         mrn_patterns = [
@@ -65,6 +106,8 @@ class PIIService:
         )
         
         # Add custom recognizers to analyzer
+        # Note: Adding SSN recognizer will override Presidio's default if it exists
+        self.analyzer.registry.add_recognizer(ssn_recognizer)
         self.analyzer.registry.add_recognizer(mrn_recognizer)
         self.analyzer.registry.add_recognizer(age_recognizer)
     
