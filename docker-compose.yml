@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  hipaa-gateway:
+    build: .
+    container_name: hipaa-ai-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_API_BASE=${OPENAI_API_BASE:-https://api.openai.com/v1}
+      - DEFAULT_LLM_MODEL=${DEFAULT_LLM_MODEL:-gpt-3.5-turbo}
+    volumes:
+      - ./:/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
