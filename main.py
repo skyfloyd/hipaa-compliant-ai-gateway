@@ -9,7 +9,6 @@ import uuid
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List, Dict
-import os
 from services.pii_service import PIIService
 from services.llm_service import LLMService
 

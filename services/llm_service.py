@@ -58,7 +58,7 @@ class LLMService:
                     prompt,
                     generation_config=genai.types.GenerationConfig(
                         temperature=0.7,
-                        max_output_tokens=1000,
+                        max_output_tokens=2048,  # Increased from 1000 to allow longer responses
                     )
                 )
             )
